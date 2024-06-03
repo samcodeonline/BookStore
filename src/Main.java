@@ -1,29 +1,35 @@
-import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Scanner;
 
 
-class Book implements Serializable {
+//class Book implements Serializable {
+class Book {
     int BookId;
     String BookName;
     String BookUsername;
 
-    Book(int BookId, String BookName, String BookUsername){
+    Book(int BookId, String BookName, String BookUsername) {
         this.BookId = BookId;
         this.BookName = BookName;
         this.BookUsername = BookUsername;
     }
-    public String toString(){
+
+    public Book() {
+        this.BookId = BookId;
+        this.BookName = BookName;
+        this.BookUsername = BookUsername;
+    }
+
+    public String toString() {
         return BookId + " " + BookName + " " + BookUsername;
     }
+
 }
 
-public class Main extends  {
+//public class Main extends  {
+public class Main {
     static void menu() {
-        System.out.println("1. insert \n" + "2. Update \n" + "3. Delete \n" + "4. Exit Program" );
+        System.out.println("1. insert \n" + "2. Update \n" + "3. Delete \n" + "4. Search Record \n" + "5. Exit Program");
     }
 
     public static void main(String[] args) {
@@ -31,9 +37,14 @@ public class Main extends  {
         String username = "root";
         String password = "";
 
-        try (Connection connection = DriverManager.getConnection(url, username, password); Statement stmt = connection.createStatement();) {
-            String sql = "CREATE TABLE bookregistration " + "id INT AUTO_INCREMENT , " + " bookName VARCHAR(55), " + " authorName VARCHAR(55), " + " PRIMARY KEY ( id )";
+        try (
+             Connection connection = DriverManager.getConnection(url, username, password);
+             Statement stmt = connection.createStatement();
 
+        ) {
+
+            String sql = "CREATE TABLE bookregistration " + "id INT AUTO_INCREMENT , " + " bookName VARCHAR(55), " + " authorName VARCHAR(55), " + " PRIMARY KEY ( id )";
+            stmt.executeUpdate(sql);
             System.out.println("Created table in given database...");
 
             Scanner intTypes = new Scanner(System.in);
@@ -44,18 +55,23 @@ public class Main extends  {
                 switch (choose) {
                     case 1:
                         //                    insert using database
-                        System.out.print("Book Name : ");
-                        String book_name = stringTypes.nextLine();
-                        System.out.print("Author Name : ");
-                        String author_name = stringTypes.nextLine();
-                        String insertionQuery = "INSERT INTO bookregistration (bookName, authorName) VALUES  (?,?)";
-                        PreparedStatement insertStatment = connection.prepareStatement(insertionQuery);
-                        insertStatment.setString(1, book_name);
-                        insertStatment.setString(2, author_name);
-                        insertStatment.executeUpdate();
-                        System.out.println("Record inserted");
+                        System.out.print("Enter the Book Count : ");
+                        int book_count = intTypes.nextInt();
+                        for(int bookCount = 0 ; bookCount < book_count; bookCount++) {
+                            System.out.print("Book Name : ");
+                            String book_name = stringTypes.nextLine();
+                            System.out.print("Author Name : ");
+                            String author_name = stringTypes.nextLine();
+                            String insertionQuery = "INSERT INTO bookregistration (bookName, authorName) VALUES  (?,?)";
+                            PreparedStatement insertStatment = connection.prepareStatement(insertionQuery);
+                            insertStatment.setString(1, book_name);
+                            insertStatment.setString(2, author_name);
+                            insertStatment.executeUpdate();
+                            System.out.println("Record inserted");
+                        }
                         break;
 
+//                        updating the Book data
                     case 2:
                         System.out.print("Tell the Book id: ");
                         int book_update_id = intTypes.nextInt();
@@ -63,7 +79,7 @@ public class Main extends  {
                         String update_book_name = stringTypes.nextLine();
                         System.out.print("Author Name : ");
                         String update_author_name = stringTypes.nextLine();
-                        String updateQuery = "UPDATE bookregistration SET bookName = " + update_book_name + "," + " authorName = " + update_author_name + " WHERE id = " + book_update_id;
+                        String updateQuery = "UPDATE `bookregistration` SET `bookName`= ?,`authorName`= ?  WHERE `id` = " + book_update_id;
                         PreparedStatement updateStatement = connection.prepareStatement(updateQuery);
                         updateStatement.setString(1, update_book_name);
                         updateStatement.setString(2, update_author_name);
@@ -80,26 +96,25 @@ public class Main extends  {
                         System.out.println("Record deleted.");
                         break;
                     case 4:
-                    case 3:
-                    if(true){
-                        boolean found = false;
-                        System.out.println("--------------BookSearchedData--------------");
-                        System.out.print("Enter Book Author Name : ");
-                        while (!found) {
-//                            Book Book = (Book) list_iterator.next();
-                            if (Book.BookUsername.contains(BookAuthor)){
-                                System.out.println(Book);
-                                found = true;
-                            System.out.println("-----------------------------------");
+                        System.out.print("Tell the book Id: ");
+                        int book_id = intTypes.nextInt();
+//                        String book_author_name = stringTypes.nextLine();
+                        String selectSQL = "SELECT * FROM bookregistration WHERE id = " + book_id;
+//                       execute select SQL stetement
+                        ResultSet rs = stmt.executeQuery(selectSQL);
+
+                        try {
+                            while (rs.next()) {
+//                                int id_of_book = rs.getInt("id");
+                                String BookName = rs.getString("bookName");
+                                String BookAuthor = rs.getString("authorName");
+                                System.out.println("Book Name : " + BookName + " ,  " + "Book Author:  " + BookAuthor);
                             }
-                        } if(!found) {
-                            System.out.println("Book not Found");
+                        } catch (SQLException e1) {
+                            // TODO Auto-generated catch block
+                            e1.printStackTrace();
                         }
-                    }
-                    else {
-                        System.out.println("File not Found");
-                    }
-                    break;
+                        break;
                     case 5:
                         System.out.println("Exit");
                         return;
