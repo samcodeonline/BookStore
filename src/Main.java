@@ -3,28 +3,28 @@ import java.util.Scanner;
 
 
 //class Book implements Serializable {
-class Book {
-    int BookId;
-    String BookName;
-    String BookUsername;
-
-    Book(int BookId, String BookName, String BookUsername) {
-        this.BookId = BookId;
-        this.BookName = BookName;
-        this.BookUsername = BookUsername;
-    }
-
-    public Book() {
-        this.BookId = BookId;
-        this.BookName = BookName;
-        this.BookUsername = BookUsername;
-    }
-
-    public String toString() {
-        return BookId + " " + BookName + " " + BookUsername;
-    }
-
-}
+//class Book {
+//    int BookId;
+//    String BookName;
+//    String BookUsername;
+//
+//    Book(int BookId, String BookName, String BookUsername) {
+//        this.BookId = BookId;
+//        this.BookName = BookName;
+//        this.BookUsername = BookUsername;
+//    }
+//
+//    public Book() {
+//        this.BookId = BookId;
+//        this.BookName = BookName;
+//        this.BookUsername = BookUsername;
+//    }
+//
+//    public String toString() {
+//        return BookId + " " + BookName + " " + BookUsername;
+//    }
+//
+//}
 
 //public class Main extends  {
 public class Main {
@@ -40,11 +40,9 @@ public class Main {
         try (
              Connection connection = DriverManager.getConnection(url, username, password);
              Statement stmt = connection.createStatement();
-
         ) {
-
-            String sql = "CREATE TABLE bookregistration " + "id INT AUTO_INCREMENT , " + " bookName VARCHAR(55), " + " authorName VARCHAR(55), " + " PRIMARY KEY ( id )";
-            stmt.executeUpdate(sql);
+            String sql = "CREATE TABLE bookregistration (id INT AUTO_INCREMENT ,  bookName VARCHAR(55),  authorName VARCHAR(55),  PRIMARY KEY ( id ))";
+//            stmt.executeUpdate(sql);
             System.out.println("Created table in given database...");
 
             Scanner intTypes = new Scanner(System.in);
@@ -70,7 +68,6 @@ public class Main {
                             System.out.println("Record inserted");
                         }
                         break;
-
 //                        updating the Book data
                     case 2:
                         System.out.print("Tell the Book id: ");
