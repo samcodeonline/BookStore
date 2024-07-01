@@ -1,39 +1,21 @@
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.*;
-import java.util.Scanner;
+import java.util.*;
 
 public class Methods {
+    PreparedStatement stmt = null;
+    ResultSet rs = null;
+    Statement statement = null;
 
-    public static void createTables(Connection connection) throws SQLException {
-        Statement stmt = connection.createStatement();
-
-        String createLibraryMemberTable = "CREATE TABLE IF NOT EXISTS library_member (" +
-                "member_id INT AUTO_INCREMENT, " +
-                "name VARCHAR(55), " +
-                "age_group VARCHAR(10), " +
-                "personal_info VARCHAR(10), " +
-                "gender VARCHAR(10), " +
-                "father_name VARCHAR(55), " +
-                "cnic VARCHAR(15), " +
-                "email VARCHAR(55), " +
-                "password VARCHAR(255), " +
-                "contact_number VARCHAR(15), " +
-                "PRIMARY KEY (member_id))";
-        stmt.executeUpdate(createLibraryMemberTable);
-
+    public void createTables(Connection connection) {
         String createBooksTable = "CREATE TABLE IF NOT EXISTS books (" +
                 "book_id INT AUTO_INCREMENT, " +
                 "book_name VARCHAR(55), " +
                 "PRIMARY KEY (book_id))";
-        stmt.executeUpdate(createBooksTable);
 
         String createAuthorsTable = "CREATE TABLE IF NOT EXISTS authors (" +
                 "author_id INT AUTO_INCREMENT, " +
                 "author_name VARCHAR(55), " +
                 "PRIMARY KEY (author_id))";
-        stmt.executeUpdate(createAuthorsTable);
 
         String createAuthorBookTable = "CREATE TABLE IF NOT EXISTS author_book (" +
                 "author_id INT, " +
@@ -41,73 +23,75 @@ public class Methods {
                 "PRIMARY KEY (author_id, book_id), " +
                 "FOREIGN KEY (author_id) REFERENCES authors(author_id) ON DELETE CASCADE ON UPDATE CASCADE, " +
                 "FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE ON UPDATE CASCADE)";
-        stmt.executeUpdate(createAuthorBookTable);
 
-        String createIssuedBooksTable = "CREATE TABLE IF NOT EXISTS issued_books (" +
-                "issue_id INT AUTO_INCREMENT, " +
-                "member_id INT, " +
-                "book_id INT, " +
-                "issue_date DATE, " +
-                "return_date DATE, " +
-                "PRIMARY KEY (issue_id), " +
-                "FOREIGN KEY (member_id) REFERENCES library_member(member_id) ON DELETE CASCADE ON UPDATE CASCADE, " +
-                "FOREIGN KEY (book_id) REFERENCES books(book_id) ON DELETE CASCADE ON UPDATE CASCADE)";
-        stmt.executeUpdate(createIssuedBooksTable);
-
-        System.out.println("Tables created successfully...");
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(createBooksTable);
+            stmt.executeUpdate(createAuthorsTable);
+            stmt.executeUpdate(createAuthorBookTable);
+            System.out.println("Tables created successfully...");
+        } catch (SQLException e) {
+            System.out.println("There was an error : " + e.getMessage());
+        }
     }
 
-    public static void menu(Connection connection) throws SQLException {
+    public void menu(Connection connection) throws SQLException {
+
         Scanner scanner = new Scanner(System.in);
         boolean running = true;
 
         while (running) {
-            System.out.println("\nLibrary System Menu:");
+            System.out.println("\nBook Store Menu:");
             System.out.println("1. Insert Book");
             System.out.println("2. View Books (With Authors)");
             System.out.println("3. Delete Book");
             System.out.println("4. Update Book");
             System.out.println("5. Add Author");
-            System.out.println("6. View Authors (With Books)");
-            System.out.println("7. Delete Author");
-            System.out.println("8. Update Author");
-            System.out.println("9. Search Book");
-            System.out.println("10. Exit");
+            System.out.println("6. Add Multiple Authors to Book");
+            System.out.println("7. View Authors (With Books)");
+            System.out.println("8. Delete Author");
+            System.out.println("9. Update Author");
+            System.out.println("10. Search Book");
+            System.out.println("11. Exit");
 
             int choice = scanner.nextInt();
-            scanner.nextLine(); // Consume newline
-
+            scanner.nextLine();
             switch (choice) {
                 case 1:
-                    insertBookMenu(connection);
+                    insertBookMenu(connection, scanner);
                     break;
                 case 2:
                     viewBooksWithAuthors(connection);
                     break;
                 case 3:
-                    deleteBook(connection);
+                    deleteBook(connection, scanner);
                     break;
                 case 4:
-                    updateBook(connection);
+                    updateBookMenu(connection, scanner);
                     break;
                 case 5:
-                    addAuthor(connection);
+                    addAuthor(connection, scanner);
                     break;
                 case 6:
-                    viewAuthorsWithBooks(connection);
+                    addMultipleAuthorsToBook(connection, scanner);
                     break;
                 case 7:
-                    deleteAuthor(connection);
+                    viewAuthorsWithBooks(connection);
                     break;
                 case 8:
-                    updateAuthor(connection);
+                    deleteAuthor(connection, scanner);
                     break;
                 case 9:
-                    searchBook(connection);
+                    updateAuthorMenu(connection, scanner);
                     break;
                 case 10:
+                    searchBook(connection, scanner);
+                    break;
+                case 11:
                     running = false;
                     System.out.println("Goodbye!");
+                    stmt.close();
+                    rs.close();
+                    scanner.close();
                     break;
                 default:
                     System.out.println("Invalid choice. Please select a valid option.");
@@ -115,9 +99,8 @@ public class Methods {
         }
     }
 
-    // Insert Book Menu
-    private static void insertBookMenu(Connection connection) throws SQLException {
-        Scanner scanner = new Scanner(System.in);
+    private void insertBookMenu(Connection connection, Scanner scanner) {
+
         System.out.println("Choose an option:");
         System.out.println("1. Select Author");
         System.out.println("2. New Author");
@@ -129,265 +112,261 @@ public class Methods {
 
         switch (choice) {
             case 1:
-                insertBookWithExistingAuthor(connection);
+                insertBookWithExistingAuthor(connection, scanner);
                 break;
             case 2:
-                insertBookWithNewAuthor(connection);
+                insertBookWithNewAuthor(connection, scanner);
                 break;
             case 3:
-                insertBookWithoutAuthor(connection);
+                insertBookWithoutAuthor(connection, scanner);
                 break;
             case 4:
                 break;
             default:
                 System.out.println("Invalid choice. Please select a valid option.");
         }
+
     }
 
-    private static void insertBookWithExistingAuthor(Connection connection) throws SQLException {
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Enter the Book Name: ");
-        String bookName = scanner.nextLine();
+    private void updateBookMenu(Connection connection, Scanner scanner) {
 
-        // Insert book first
-        String bookQuery = "INSERT INTO books (book_name) VALUES (?)";
-        int bookId;
-        try (PreparedStatement bookStatement = connection.prepareStatement(bookQuery, Statement.RETURN_GENERATED_KEYS)) {
-            bookStatement.setString(1, bookName);
-            bookStatement.executeUpdate();
-            ResultSet rs = bookStatement.getGeneratedKeys();
-            if (rs.next()) {
-                bookId = rs.getInt(1);
-            } else {
-                throw new SQLException("Failed to retrieve book ID.");
-            }
+        listBooks(connection);
+        System.out.println("Enter Book ID to update: ");
+        int bookId = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        System.out.println("Choose an option:");
+        System.out.println("1. Update existing book");
+        System.out.println("2. Insert new book");
+        System.out.println("3. Exit");
+
+        int choice = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        switch (choice) {
+            case 1:
+                updateExistingBook(connection, scanner, bookId);
+                break;
+            case 2:
+                insertBookMenu(connection, scanner);
+                break;
+            case 3:
+                break;
+            default:
+                System.out.println("Invalid choice. Please select a valid option.");
         }
 
-        // Display existing authors and provide options
+    }
+
+    private void updateExistingBook(Connection connection, Scanner scanner, int bookId) {
+        System.out.println("Enter new Book Name: ");
+        String newBookName = scanner.nextLine();
+        updateBook(connection, bookId, newBookName);
+
+        System.out.println("Choose an option:");
+        System.out.println("1. Update Author");
+        System.out.println("2. Exit");
+
+        int choice = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        if (choice == 1) {
+            listAuthors(connection);
+            System.out.println("Enter the Author ID to associate with this book: ");
+            int authorId = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+            associateBookWithAuthor(connection, authorId, bookId);
+        }
+    }
+
+    private void updateAuthorMenu(Connection connection, Scanner scanner) {
+
+        listAuthors(connection);
+        System.out.println("Enter Author ID to update: ");
+        int authorId = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        System.out.println("Choose an option:");
+        System.out.println("1. Update existing author");
+        System.out.println("2. Insert new author");
+        System.out.println("3. Exit");
+
+        int choice = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        switch (choice) {
+            case 1:
+                updateExistingAuthor(connection, scanner, authorId);
+                break;
+            case 2: {
+                System.out.println("Enter Name: ");
+                String authorName = scanner.nextLine();
+                insertAuthor(connection, authorName);
+            }
+            break;
+            case 3:
+                break;
+            default:
+                System.out.println("Invalid choice. Please select a valid option.");
+        }
+
+    }
+
+    private void updateExistingAuthor(Connection connection, Scanner scanner, int authorId) {
+        System.out.println("Enter new Author Name: ");
+        String newAuthorName = scanner.nextLine();
+        updateAuthor(connection, authorId, newAuthorName);
+
+        System.out.println("Choose an option:");
+        System.out.println("1. Update Book");
+        System.out.println("2. Exit");
+
+        int choice = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        if (choice == 1) {
+            listBooks(connection);
+            System.out.println("Enter the Book ID to associate with this author: ");
+            int bookId = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+            associateBookWithAuthor(connection, authorId, bookId);
+        }
+    }
+
+    private void insertBookWithExistingAuthor(Connection connection, Scanner scanner) {
+
+        System.out.println("Enter the Book Name: ");
+        String bookName = scanner.nextLine();
+        int bookId = insertBook(connection, bookName);
+
         listAuthors(connection);
         System.out.println("Enter the Author ID to associate with this book: ");
         int authorId = scanner.nextInt();
         scanner.nextLine(); // Consume newline
 
-        String authorBookQuery = "INSERT INTO author_book (author_id, book_id) VALUES (?, ?)";
-        try (PreparedStatement authorBookStatement = connection.prepareStatement(authorBookQuery)) {
-            authorBookStatement.setInt(1, authorId);
-            authorBookStatement.setInt(2, bookId);
-            authorBookStatement.executeUpdate();
-        }
+        associateBookWithAuthor(connection, authorId, bookId);
 
         System.out.println("Book and author relationship inserted successfully.");
+
     }
 
-    private static void insertBookWithNewAuthor(Connection connection) throws SQLException {
-        Scanner scanner = new Scanner(System.in);
+    private void insertBookWithNewAuthor(Connection connection, Scanner scanner) {
+
         System.out.println("Enter the Book Name: ");
         String bookName = scanner.nextLine();
-
-        // Insert book first
-        String bookQuery = "INSERT INTO books (book_name) VALUES (?)";
-        int bookId;
-        try (PreparedStatement bookStatement = connection.prepareStatement(bookQuery, Statement.RETURN_GENERATED_KEYS)) {
-            bookStatement.setString(1, bookName);
-            bookStatement.executeUpdate();
-            ResultSet rs = bookStatement.getGeneratedKeys();
-            if (rs.next()) {
-                bookId = rs.getInt(1);
-            } else {
-                throw new SQLException("Failed to retrieve book ID.");
-            }
-        }
+        int bookId = insertBook(connection, bookName);
 
         System.out.println("Enter the Author Name: ");
         String authorName = scanner.nextLine();
+        int authorId = insertAuthor(connection, authorName);
 
-        // Insert author
-        int authorId = insertAuthorAndReturnId(connection, authorName);
-
-        String authorBookQuery = "INSERT INTO author_book (author_id, book_id) VALUES (?, ?)";
-        try (PreparedStatement authorBookStatement = connection.prepareStatement(authorBookQuery)) {
-            authorBookStatement.setInt(1, authorId);
-            authorBookStatement.setInt(2, bookId);
-            authorBookStatement.executeUpdate();
-        }
+        associateBookWithAuthor(connection, authorId, bookId);
 
         System.out.println("Book and author relationship inserted successfully.");
+
     }
 
-    private static void insertBookWithoutAuthor(Connection connection) throws SQLException {
-        Scanner scanner = new Scanner(System.in);
+    private void insertBookWithoutAuthor(Connection connection, Scanner scanner) {
+
         System.out.println("Enter the Book Name: ");
         String bookName = scanner.nextLine();
+        insertBook(connection, bookName);
+        System.out.println("Book inserted successfully.");
 
-        // Insert book
-        String bookQuery = "INSERT INTO books (book_name) VALUES (?)";
-        try (PreparedStatement bookStatement = connection.prepareStatement(bookQuery)) {
-            bookStatement.setString(1, bookName);
-            bookStatement.executeUpdate();
-            System.out.println("Book inserted successfully.");
-        }
     }
 
-    // View Books with Authors
-    private static void viewBooksWithAuthors(Connection connection) throws SQLException {
-        String query = "SELECT b.book_id, b.book_name, a.author_name FROM books b " +
-                "LEFT JOIN author_book ab ON b.book_id = ab.book_id " +
-                "LEFT JOIN authors a ON ab.author_id = a.author_id";
-        try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
-            System.out.println("Books with Authors:");
-            while (rs.next()) {
-                int bookId = rs.getInt("book_id");
-                String bookName = rs.getString("book_name");
-                String authorName = rs.getString("author_name");
-                System.out.println("Book ID: " + bookId + ", Book Name: " + bookName + ", Author Name: " + (authorName != null ? authorName : "No Author"));
-            }
-        }
-    }
 
-    // Delete Book
-    private static void deleteBook(Connection connection) throws SQLException {
+    private void deleteBook(Connection connection, Scanner scanner) {
+
         listBooks(connection);
-        Scanner scanner = new Scanner(System.in);
         System.out.println("Enter Book ID to delete: ");
         int bookId = scanner.nextInt();
         scanner.nextLine(); // Consume newline
 
-        String deleteQuery = "DELETE FROM books WHERE book_id = ?";
-        try (PreparedStatement deleteStmt = connection.prepareStatement(deleteQuery)) {
-            deleteStmt.setInt(1, bookId);
-            int rowsAffected = deleteStmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Book deleted successfully.");
-            } else {
-                System.out.println("Failed to delete book.");
-            }
-        }
-    }
+        System.out.println("Choose an option:");
+        System.out.println("1. Delete Book with Author");
+        System.out.println("2. Delete Book with Multiple Authors");
+        System.out.println("3. Delete Book Without Authors");
 
-    // Update Book
-    private static void updateBook(Connection connection) throws SQLException {
-        listBooks(connection);
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Enter Book ID to update: ");
-        int bookId = scanner.nextInt();
+        int choice = scanner.nextInt();
         scanner.nextLine(); // Consume newline
-
-        System.out.println("Enter new Book Name: ");
-        String bookName = scanner.nextLine();
-
-        // Update Book Name
-        String updateBookQuery = "UPDATE books SET book_name = ? WHERE book_id = ?";
-        try (PreparedStatement updateBookStmt = connection.prepareStatement(updateBookQuery)) {
-            updateBookStmt.setString(1, bookName);
-            updateBookStmt.setInt(2, bookId);
-            int bookRowsAffected = updateBookStmt.executeUpdate();
-            if (bookRowsAffected > 0) {
-                System.out.println("Book updated successfully.");
-            } else {
-                System.out.println("Failed to update book.");
-                return;
-            }
-        }
-
-        System.out.println("Do you want to update the author as well? (yes/no): ");
-        String updateAuthor = scanner.nextLine().toLowerCase();
-
-        if (updateAuthor.equals("yes")) {
-            listAuthors(connection);
-            System.out.println("Select Author ID to update (or enter 0 to add a new author): ");
-            int authorId = scanner.nextInt();
-            scanner.nextLine(); // Consume newline
-
-            if (authorId == 0) {
-                System.out.println("Enter new Author Name: ");
-                String authorName = scanner.nextLine();
-
-                String insertAuthorQuery = "INSERT INTO authors (author_name) VALUES (?)";
-                try (PreparedStatement insertAuthorStmt = connection.prepareStatement(insertAuthorQuery, Statement.RETURN_GENERATED_KEYS)) {
-                    insertAuthorStmt.setString(1, authorName);
-                    int authorRowsAffected = insertAuthorStmt.executeUpdate();
-                    if (authorRowsAffected > 0) {
-                        ResultSet generatedKeys = insertAuthorStmt.getGeneratedKeys();
-                        if (generatedKeys.next()) {
-                            authorId = generatedKeys.getInt(1);
-                            System.out.println("New author added with ID: " + authorId);
-                        }
-                    }
-                }
-            } else {
-                System.out.println("Enter new Author Name: ");
-                String authorName = scanner.nextLine();
-
-                String updateAuthorQuery = "UPDATE authors SET author_name = ? WHERE author_id = ?";
-                try (PreparedStatement updateAuthorStmt = connection.prepareStatement(updateAuthorQuery)) {
-                    updateAuthorStmt.setString(1, authorName);
-                    updateAuthorStmt.setInt(2, authorId);
-                    int authorRowsAffected = updateAuthorStmt.executeUpdate();
-                    if (authorRowsAffected > 0) {
-                        System.out.println("Author updated successfully.");
-                    } else {
-                        System.out.println("Failed to update author.");
-                    }
-                }
-            }
-
-            // Check if book is already linked to an author
-            String checkLinkQuery = "SELECT * FROM author_book WHERE book_id = ?";
-            try (PreparedStatement checkLinkStmt = connection.prepareStatement(checkLinkQuery)) {
-                checkLinkStmt.setInt(1, bookId);
-                ResultSet rs = checkLinkStmt.executeQuery();
-                if (rs.next()) {
-                    // Update the existing relationship
-                    String updateBookAuthorQuery = "UPDATE author_book SET author_id = ? WHERE book_id = ?";
-                    try (PreparedStatement updateBookAuthorStmt = connection.prepareStatement(updateBookAuthorQuery)) {
-                        updateBookAuthorStmt.setInt(1, authorId);
-                        updateBookAuthorStmt.setInt(2, bookId);
-                        int rowsAffected = updateBookAuthorStmt.executeUpdate();
-                        if (rowsAffected > 0) {
-                            System.out.println("Book-Author relationship updated successfully.");
-                        } else {
-                            System.out.println("Failed to update Book-Author relationship.");
-                        }
-                    }
-                } else {
-                    // Insert new relationship
-                    String insertBookAuthorQuery = "INSERT INTO author_book (author_id, book_id) VALUES (?, ?)";
-                    try (PreparedStatement insertBookAuthorStmt = connection.prepareStatement(insertBookAuthorQuery)) {
-                        insertBookAuthorStmt.setInt(1, authorId);
-                        insertBookAuthorStmt.setInt(2, bookId);
-                        int rowsAffected = insertBookAuthorStmt.executeUpdate();
-                        if (rowsAffected > 0) {
-                            System.out.println("Book-Author relationship created successfully.");
-                        } else {
-                            System.out.println("Failed to create Book-Author relationship.");
-                        }
-                    }
-                }
-            }
+        switch (choice) {
+            case 1:
+                deleteBookWithAuthor(connection, bookId);
+                break;
+            case 2:
+                deleteBookWithMultipleAuthors(connection, bookId);
+                break;
+            case 3:
+                deleteBookWithoutAuthors(connection, bookId);
+                break;
+            default:
+                System.out.println("Invalid choice. Please select a valid option.");
         }
     }
 
 
-    // Add Author
-    private static void addAuthor(Connection connection) throws SQLException {
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Enter Author Name: ");
+    private void deleteBookWithAuthor(Connection connection, int bookId) {
+        String query = "DELETE FROM books WHERE book_id = ?";
+        try {
+            stmt = connection.prepareStatement(query);
+            stmt.setInt(1, bookId);
+            stmt.executeUpdate();
+            System.out.println("Book deleted successfully.");
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
+
+        }
+    }
+
+    private void deleteBookWithMultipleAuthors(Connection connection, int bookId) {
+        try {
+            String query = "DELETE FROM author_book WHERE book_id = ?";
+            PreparedStatement stmt = connection.prepareStatement(query);
+            stmt.setInt(1, bookId);
+            stmt.executeUpdate();
+            deleteBookWithAuthor(connection, bookId);
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
+        }
+    }
+
+    private void deleteBookWithoutAuthors(Connection connection, int bookId) {
+        deleteBookWithAuthor(connection, bookId);
+    }
+
+    private void updateBook(Connection connection, int bookId, String newBookName) {
+        try {
+            String query = "UPDATE books SET book_name = ? WHERE book_id = ?";
+            PreparedStatement stmt = connection.prepareStatement(query);
+            stmt.setString(1, newBookName);
+            stmt.setInt(2, bookId);
+            stmt.executeUpdate();
+            System.out.println("Book updated successfully.");
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
+
+        }
+    }
+
+    private void addAuthor(Connection connection, Scanner scanner) {
+
+        System.out.println("Enter the Author Name: ");
         String authorName = scanner.nextLine();
 
-        String query = "INSERT INTO authors (author_name) VALUES (?)";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setString(1, authorName);
-            pstmt.executeUpdate();
-            System.out.println("Author inserted successfully.");
-        }
+        insertAuthor(connection, authorName);
+        System.out.println("Author added successfully.");
+
     }
 
-    // View Authors with Books
-    private static void viewAuthorsWithBooks(Connection connection) throws SQLException {
+    public void viewAuthorsWithBooks(Connection connection) {
         String query = "SELECT a.author_id, a.author_name, b.book_name FROM authors a " +
                 "LEFT JOIN author_book ab ON a.author_id = ab.author_id " +
                 "LEFT JOIN books b ON ab.book_id = b.book_id";
-        try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
+
+        try {
+            Statement stmt = connection.createStatement();
+             rs = stmt.executeQuery(query);
             System.out.println("Authors with Books:");
             while (rs.next()) {
                 int authorId = rs.getInt("author_id");
@@ -395,133 +374,331 @@ public class Methods {
                 String bookName = rs.getString("book_name");
                 System.out.println("Author ID: " + authorId + ", Author Name: " + authorName + ", Book Name: " + (bookName != null ? bookName : "No Book"));
             }
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
+
         }
     }
 
-    // Delete Author
-    private static void deleteAuthor(Connection connection) throws SQLException {
+    private void deleteAuthor(Connection connection, Scanner scanner) {
+
         listAuthors(connection);
-        Scanner scanner = new Scanner(System.in);
         System.out.println("Enter Author ID to delete: ");
         int authorId = scanner.nextInt();
         scanner.nextLine(); // Consume newline
 
-        String deleteQuery = "DELETE FROM authors WHERE author_id = ?";
-        try (PreparedStatement deleteStmt = connection.prepareStatement(deleteQuery)) {
-            deleteStmt.setInt(1, authorId);
-            int rowsAffected = deleteStmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Author deleted successfully.");
-            } else {
-                System.out.println("Failed to delete author.");
-            }
-        }
-    }
+        System.out.println("Choose an option:");
+        System.out.println("1. Delete Book with Author");
+        System.out.println("2. Delete Book with Multiple Authors");
+        System.out.println("3. Delete Book Without Authors");
 
-    // Update Author
-    private static void updateAuthor(Connection connection) throws SQLException {
-        listAuthors(connection);
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Enter Author ID to update: ");
-        int authorId = scanner.nextInt();
+        int choice = scanner.nextInt();
         scanner.nextLine(); // Consume newline
 
-        System.out.println("Enter new Author Name: ");
-        String authorName = scanner.nextLine();
+        switch (choice) {
+            case 1:
+                deleteAuthorWithBooks(connection, authorId);
+                break;
+            case 2:
+                deleteAuthorWithMultipleBooks(connection, authorId);
+                break;
+            case 3:
+                deleteAuthorWithoutBooks(connection, authorId);
+                break;
+            default:
+                System.out.println("Invalid choice. Please select a valid option.");
+        }
 
-        String updateQuery = "UPDATE authors SET author_name = ? WHERE author_id = ?";
-        try (PreparedStatement updateStmt = connection.prepareStatement(updateQuery)) {
-            updateStmt.setString(1, authorName);
-            updateStmt.setInt(2, authorId);
-            int rowsAffected = updateStmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Author updated successfully.");
-            } else {
-                System.out.println("Failed to update author.");
-            }
+    }
+
+    private void deleteAuthorWithBooks(Connection connection, int authorId) {
+        try {
+            String query = "DELETE FROM authors WHERE author_id = ?";
+            stmt = connection.prepareStatement(query);
+            stmt.setInt(1, authorId);
+            stmt.executeUpdate();
+            System.out.println("Author and associated books deleted successfully.");
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
+
         }
     }
 
-    // Search Book
-    private static void searchBook(Connection connection) throws SQLException {
-        Scanner scanner = new Scanner(System.in);
+    private void deleteAuthorWithMultipleBooks(Connection connection, int authorId) {
+        String query = "DELETE FROM author_book WHERE author_id = ?";
+        try {
+            stmt = connection.prepareStatement(query);
+            stmt.setInt(1, authorId);
+            stmt.executeUpdate();
+            deleteAuthorWithBooks(connection, authorId);
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
+
+        }
+    }
+
+    private void deleteAuthorWithoutBooks(Connection connection, int authorId) {
+        deleteAuthorWithBooks(connection, authorId);
+    }
+
+    private void updateAuthor(Connection connection, int authorId, String newAuthorName) {
+        try {
+            String query = "UPDATE authors SET author_name = ? WHERE author_id = ?";
+            stmt = connection.prepareStatement(query);
+            stmt.setString(1, newAuthorName);
+            stmt.setInt(2, authorId);
+            stmt.executeUpdate();
+            System.out.println("Author updated successfully.");
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
+
+        }
+    }
+
+    private void searchBook(Connection connection, Scanner scanner) {
+
         System.out.println("Enter Book Name or Author Name to search: ");
-        String input = scanner.nextLine();
+        String searchTerm = scanner.nextLine();
 
-        String searchBookQuery = "SELECT b.book_id, b.book_name, a.author_name FROM books b " +
-                "JOIN author_book ab ON b.book_id = ab.book_id " +
-                "JOIN authors a ON ab.author_id = a.author_id " +
-                "WHERE b.book_name LIKE ?";
-        try (PreparedStatement searchBookStmt = connection.prepareStatement(searchBookQuery)) {
-            searchBookStmt.setString(1, "%" + input + "%");
-            ResultSet rs = searchBookStmt.executeQuery();
-            boolean bookFound = false;
-            while (rs.next()) {
-                bookFound = true;
-                int bookId = rs.getInt("book_id");
-                String bookName = rs.getString("book_name");
-                String authorName = rs.getString("author_name");
-                System.out.println("Book ID: " + bookId + ", Book Name: " + bookName + ", Author Name: " + authorName);
-            }
-
-            if (!bookFound) {
-                String searchAuthorQuery = "SELECT b.book_id, b.book_name, a.author_name FROM books b " +
-                        "JOIN author_book ab ON b.book_id = ab.book_id " +
-                        "JOIN authors a ON ab.author_id = a.author_id " +
-                        "WHERE a.author_name LIKE ?";
-                try (PreparedStatement searchAuthorStmt = connection.prepareStatement(searchAuthorQuery)) {
-                    searchAuthorStmt.setString(1, "%" + input + "%");
-                    rs = searchAuthorStmt.executeQuery();
-                    while (rs.next()) {
-                        int bookId = rs.getInt("book_id");
-                        String bookName = rs.getString("book_name");
-                        String authorName = rs.getString("author_name");
-                        System.out.println("Book ID: " + bookId + ", Book Name: " + bookName + ", Author Name: " + authorName);
-                    }
-                }
-            }
-        }
-    }
-
-    // List Books
-    private static void listBooks(Connection connection) throws SQLException {
         String query = "SELECT b.book_id, b.book_name, a.author_name FROM books b " +
                 "LEFT JOIN author_book ab ON b.book_id = ab.book_id " +
-                "LEFT JOIN authors a ON ab.author_id = a.author_id";
-        try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
-            System.out.println("Existing books in the library:");
+                "LEFT JOIN authors a ON ab.author_id = a.author_id " +
+                "WHERE b.book_name LIKE ? OR a.author_name LIKE ?";
+
+        try {
+            stmt = connection.prepareStatement(query);
+
+            stmt.setString(1, "%" + searchTerm + "%");
+            stmt.setString(2, "%" + searchTerm + "%");
+
+             rs = stmt.executeQuery();
+            System.out.println("Search Results:");
             while (rs.next()) {
                 int bookId = rs.getInt("book_id");
                 String bookName = rs.getString("book_name");
                 String authorName = rs.getString("author_name");
                 System.out.println("Book ID: " + bookId + ", Book Name: " + bookName + ", Author Name: " + (authorName != null ? authorName : "No Author"));
             }
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
+
+        }
+
+    }
+
+    private int insertBook(Connection connection, String bookName) {
+        try {
+            String bookQuery = "INSERT INTO books (book_name) VALUES (?)";
+            stmt = connection.prepareStatement(bookQuery, Statement.RETURN_GENERATED_KEYS);
+            stmt.setString(1, bookName);
+            stmt.executeUpdate();
+             rs = stmt.getGeneratedKeys();
+            if (rs.next()) {
+                return rs.getInt(1);
+            } else {
+                throw new SQLException("Failed to retrieve book ID.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
+
+        }
+        return -1;
+    }
+
+    private int insertAuthor(Connection connection, String authorName) {
+        try {
+            String authorQuery = "INSERT INTO authors (author_name) VALUES (?)";
+            stmt = connection.prepareStatement(authorQuery, Statement.RETURN_GENERATED_KEYS);
+            stmt.setString(1, authorName);
+            stmt.executeUpdate();
+             rs = stmt.getGeneratedKeys();
+            if (rs.next()) {
+                return rs.getInt(1);
+            } else {
+                throw new SQLException("Failed to retrieve author ID.");
+            }
+
+        } catch (SQLException e) {
+            System.out.println("The error occurred: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    private void associateBookWithAuthor(Connection connection, int authorId, int bookId) {
+        try {
+            String authorBookQuery = "INSERT INTO author_book (author_id, book_id) VALUES (?, ?)";
+            stmt = connection.prepareStatement(authorBookQuery);
+            stmt.setInt(1, authorId);
+            stmt.setInt(2, bookId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
         }
     }
-    // List Authors
-    private static void listAuthors(Connection connection) throws SQLException {
-        String query = "SELECT author_id, author_name FROM authors";
-        try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
-            System.out.println("Existing authors:");
+
+    private void listBooks(Connection connection) {
+        String query = "SELECT * FROM books";
+        try  {
+            Statement stmt = connection.createStatement() ;
+            rs = stmt.executeQuery(query);
+            System.out.println("Books:");
+            while (rs.next()) {
+                int bookId = rs.getInt("book_id");
+                String bookName = rs.getString("book_name");
+                System.out.println("Book ID: " + bookId + ", Book Name: " + bookName);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
+        }
+    }
+
+    private void listAuthors(Connection connection) {
+        String query = "SELECT * FROM authors";
+        try  {
+            Statement stmt = connection.createStatement();   rs = stmt.executeQuery(query);
+            System.out.println("Authors:");
             while (rs.next()) {
                 int authorId = rs.getInt("author_id");
                 String authorName = rs.getString("author_name");
                 System.out.println("Author ID: " + authorId + ", Author Name: " + authorName);
             }
+        } catch (SQLException e) {
+            System.out.println("Error!! : " + e.getMessage());
         }
     }
 
-    // Insert Author and Return ID
-    private static int insertAuthorAndReturnId(Connection connection, String authorName) throws SQLException {
-        String query = "INSERT INTO authors (author_name) VALUES (?)";
-        try (PreparedStatement pstmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
-            pstmt.setString(1, authorName);
-            pstmt.executeUpdate();
-            ResultSet rs = pstmt.getGeneratedKeys();
+    public void addMultipleAuthorsToBook(Connection connection, Scanner scanner) {
+        listBooks(connection);
+        System.out.println("Enter the Book ID: ");
+        int bookId = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        System.out.println("Enter the Book Name: ");
+        String bookName = scanner.nextLine();
+
+        System.out.println("Enter the number of authors to add: ");
+        int authorCount = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        ArrayList<String> authors = new ArrayList<>();
+        for (int i = 0; i < authorCount; i++) {
+            System.out.println("Enter Author Name " + (i + 1) + ": ");
+            String authorName = scanner.nextLine();
+            authors.add(authorName);
+        }
+
+        // Ensure the book exists
+        insertBookIfNotExists(connection, bookId, bookName);
+
+        // Insert authors and associate them with the book
+        for (String author : authors) {
+            int authorId = getOrInsertAuthor(connection, author);
+            if (authorId != -1) {
+                associateBookWithAuthor(connection, authorId, bookId);
+            }
+        }
+
+        System.out.println("Successfully added authors to the book.");
+    }
+
+    private void insertBookIfNotExists(Connection connection, int bookId, String bookName) {
+        try {
+            String query = "INSERT INTO books (book_id, book_name) VALUES (?, ?) ON DUPLICATE KEY UPDATE book_name = VALUES(book_name)";
+             stmt = connection.prepareStatement(query);
+            stmt.setInt(1, bookId);
+            stmt.setString(2, bookName);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private int getOrInsertAuthor(Connection connection, String authorName) {
+        // Check if the author exists
+        try {
+            String selectQuery = "SELECT author_id FROM authors WHERE author_name = ?";
+            String insertQuery = "INSERT INTO authors (author_name) VALUES (?)";
+            stmt = connection.prepareStatement(selectQuery);
+            stmt.setString(1, authorName);
+             rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("author_id");
+            }
+            // Insert the author if not exists
+
+            stmt = connection.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS);
+
+            stmt.setString(1, authorName);
+            stmt.executeUpdate();
+            rs = stmt.getGeneratedKeys();
             if (rs.next()) {
                 return rs.getInt(1);
             }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
+
         return -1;
     }
+
+    public void viewBooksWithAuthors(Connection connection) {
+        String query = "SELECT b.book_id, b.book_name, a.author_name FROM books b " +
+                "LEFT JOIN author_book ab ON b.book_id = ab.book_id " +
+                "LEFT JOIN authors a ON ab.author_id = a.author_id";
+
+        try {
+            statement = connection.createStatement();
+             rs = stmt.executeQuery(query);
+
+            // LinkedHashMap to maintain insertion order
+            Map<Integer, Book> bookMap = new LinkedHashMap<>();
+
+            while (rs.next()) {
+                int bookId = rs.getInt("book_id");
+                String bookName = rs.getString("book_name");
+                String authorName = rs.getString("author_name");
+
+                // If the book is not already in the map, add it
+                bookMap.putIfAbsent(bookId, new Book(bookId, bookName));
+
+                // Add author to the book's author list
+                if (authorName != null) {
+                    bookMap.get(bookId).addAuthor(authorName);
+                }
+            }
+
+            // Print the results
+            System.out.println("Books with Authors:");
+            for (Book book : bookMap.values()) {
+                System.out.println(book);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    // Helper class to hold book data
+    class Book {
+        private int id;
+        private String name;
+        private List<String> authors;
+
+        public Book(int id, String name) {
+            this.id = id;
+            this.name = name;
+            this.authors = new ArrayList<>();
+        }
+
+        public void addAuthor(String author) {
+            this.authors.add(author);
+        }
+
+        @Override
+        public String toString() {
+            String authorsString = authors.isEmpty() ? "No Author" : String.join(", ", authors);
+            return "Book ID: " + id + ", Book Name: " + name + ", Author Name(s): " + authorsString;
+        }
+    }
+
+
 }
